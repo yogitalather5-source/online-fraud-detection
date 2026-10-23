@@ -51,6 +51,32 @@ def show_risk_alert(score, result, reasons, check_name="Check"):
         else:
             st.markdown("**Why:** No risk indicators were triggered by these demo rules.")
         st.caption("This score is illustrative, not a verified fraud probability or proof of fraud.")
+        
+    # Check failed attempts
+if failed_attempts >= 3:
+    score += 25
+    reasons.append(
+        f"{failed_attempts} failed attempts detected."
+    )
+elif failed_attempts >= 1:
+    score += 10
+    reasons.append(
+        f"{failed_attempts} failed attempt(s) detected."
+    )
+
+# Check number of devices
+if devices_used >= 3:
+    score += 25
+    reasons.append(
+        f"{devices_used} devices used; review activity."
+    )
+elif devices_used == 2:
+    score += 10
+    reasons.append(
+        "Two devices used; review if unexpected."
+    )
+
+score = min(score, 99)
 
 
 # ---------------- DASHBOARD ----------------
@@ -134,6 +160,21 @@ elif page == "Transaction Checker":
         st.subheader("Screening Result")
         st.metric("Illustrative Risk Score", f"{score}/100")
         show_risk_alert(score, result, reasons, "Transaction")
+        failed_attempts = st.number_input(
+    "Number of Failed Attempts",
+    min_value=0,
+    max_value=100,
+    value=0,
+    step=1
+)
+
+devices_used = st.number_input(
+    "Number of Devices Used",
+    min_value=1,
+    max_value=20,
+    value=1,
+    step=1
+)
 
 # ---------------- URL CHECKER ----------------
 elif page == "URL Checker":
