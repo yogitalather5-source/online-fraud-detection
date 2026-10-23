@@ -1,28 +1,36 @@
 import streamlit as st
 import pandas as pd
+import ipaddress
 from urllib.parse import urlparse
 from datetime import datetime
 
-st.set_page_config(page_title="Online Fraud Detection", page_icon="🛡️", layout="wide")
+# ---------------- PAGE CONFIG ----------------
+st.set_page_config(
+    page_title="Online Fraud Detection",
+    page_icon="🛡️",
+    layout="wide"
+)
 
-# History is kept for the current Streamlit session.
+# ---------------- SESSION STATE ----------------
 if "history" not in st.session_state:
     st.session_state.history = []
-if "transaction_id" not in st.session_state:
-    st.session_state.transaction_id = 1
 
 st.title("🛡️ Online Fraud Detection System")
 st.caption("Educational demo | Transaction and URL risk screening")
+
 st.info(
-    "This is a rule-based educational project, not a trained machine-learning model. "
-    "Scores are illustrative, not proof of fraud."
+    "This is a rule-based educational project, not a trained "
+    "machine-learning model. Scores are illustrative and do not "
+    "prove that a transaction or website is fraudulent."
 )
 
 page = st.sidebar.radio(
-    "Navigation", ["Dashboard", "Transaction Checker", "URL Checker", "History"]
+    "Navigation",
+    ["Dashboard", "Transaction Checker", "URL Checker", "History"]
 )
 
 
+# ---------------- SAVE RESULTS ----------------
 def save_result(check_type, item, score, result, reasons):
     st.session_state.history.append({
         "Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -30,63 +38,70 @@ def save_result(check_type, item, score, result, reasons):
         "Item": str(item),
         "Risk Score": score,
         "Result": result,
-        "Reasons": ", ".join(reasons) if reasons else "No flagged indicators",
+        "Reasons": ", ".join(reasons)
+        if reasons else "No flagged indicators"
     })
 
 
+# ---------------- RISK CATEGORY ----------------
+def get_risk_result(score):
+    if score >= 60:
+        return "Higher Risk"
+    elif score >= 30:
+        return "Medium Risk"
+    return "Lower Risk"
+
+
+# ---------------- DISPLAY RISK ALERT ----------------
 def show_risk_alert(score, result, reasons, check_name="Check"):
-    """Display a risk alert with the rule indicators behind it."""
     with st.container(border=True):
         if score >= 60:
-            st.error(f"🚨 Higher-risk alert: review this {check_name.lower()} carefully.")
+            st.error(
+                f"🚨 Higher-risk alert: review this "
+                f"{check_name.lower()} carefully."
+            )
         elif score >= 30:
-            st.warning(f"⚠️ Medium-risk alert: verify this {check_name.lower()} carefully.")
+            st.warning(
+                f"⚠️ Medium-risk alert: verify this "
+                f"{check_name.lower()} carefully."
+            )
         else:
-            st.success("✅ Lower risk based on the selected demo indicators.")
+            st.success(
+                "✅ Lower risk based on the selected demo indicators."
+            )
 
         if reasons:
             st.markdown("**Why this alert appeared:**")
             for reason in reasons:
                 st.markdown(f"- {reason}")
         else:
-            st.markdown("**Why:** No risk indicators were triggered by these demo rules.")
-        st.caption("This score is illustrative, not a verified fraud probability or proof of fraud.")
-        
-    # Check failed attempts
-if failed_attempts >= 3:
-    score += 25
-    reasons.append(
-        f"{failed_attempts} failed attempts detected."
-    )
-elif failed_attempts >= 1:
-    score += 10
-    reasons.append(
-        f"{failed_attempts} failed attempt(s) detected."
-    )
+            st.markdown(
+                "**Why:** No risk indicators were triggered "
+                "by these demo rules."
+            )
 
-# Check number of devices
-if devices_used >= 3:
-    score += 25
-    reasons.append(
-        f"{devices_used} devices used; review activity."
-    )
-elif devices_used == 2:
-    score += 10
-    reasons.append(
-        "Two devices used; review if unexpected."
-    )
-
-score = min(score, 99)
+        st.caption(
+            "This score is illustrative, not a verified fraud probability."
+        )
 
 
-# ---------------- DASHBOARD ----------------
+# ==================================================
+# DASHBOARD
+# ==================================================
 if page == "Dashboard":
     st.header("📊 Dashboard")
+
     history = st.session_state.history
     df = pd.DataFrame(history)
+
     total = len(history)
-    high = sum(1 for x in history if x["Risk Score"] >= 60)
-    medium = sum(1 for x in history if 30 <= x["Risk Score"] < 60)
+    high = sum(
+        1 for item in history if item["Risk Score"] >= 60
+    )
+    medium = sum(
+        1 for item in history
+        if 30 <= item["Risk Score"] < 60
+    )
     low = total - high - medium
 
     c1, c2, c3, c4 = st.columns(4)
@@ -95,32 +110,56 @@ if page == "Dashboard":
     c3.metric("Medium Risk", medium)
     c4.metric("Lower Risk", low)
 
-    if total:
+    if total > 0:
         st.subheader("Risk Distribution")
+
         chart_data = pd.DataFrame({
-            "Category": ["Higher Risk", "Medium Risk", "Lower Risk"],
-            "Count": [high, medium, low],
+            "Category": [
+                "Higher Risk",
+                "Medium Risk",
+                "Lower Risk"
+            ],
+            "Count": [high, medium, low]
         }).set_index("Category")
+
         st.bar_chart(chart_data)
 
-        # Added analytics: risk score over the order checks were performed.
         st.subheader("Risk Score Trend")
+
         trend_df = df[["Risk Score"]].copy()
         trend_df.index = range(1, len(trend_df) + 1)
         trend_df.index.name = "Check Number"
+
         st.line_chart(trend_df)
 
-        # Added analytics: transaction checks compared with URL checks.
         st.subheader("Checks by Type")
-        type_counts = df["Type"].value_counts().rename_axis("Check Type").to_frame("Count")
+
+        type_counts = (
+            df["Type"]
+            .value_counts()
+            .rename_axis("Check Type")
+            .to_frame("Count")
+        )
+
         st.bar_chart(type_counts)
 
         st.subheader("Recent Activity")
-        st.dataframe(df.tail(10).iloc[::-1], use_container_width=True, hide_index=True)
-    else:
-        st.info("No checks yet. Use Transaction Checker or URL Checker to create analytics.")
 
-# ---------------- TRANSACTION CHECKER ----------------
+        st.dataframe(
+            df.tail(10).iloc[::-1],
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.info(
+            "No checks yet. Use Transaction Checker or URL Checker "
+            "to create analytics."
+        )
+
+
+# ==================================================
+# TRANSACTION CHECKER
+# ==================================================
 elif page == "Transaction Checker":
     st.header("💳 Transaction Fraud Checker")
 
@@ -128,37 +167,112 @@ elif page == "Transaction Checker":
         amount = st.number_input(
             "Transaction Amount (₹)",
             min_value=0.0,
-            value=1000.0
+            value=1000.0,
+            step=100.0
         )
 
         failed_attempts = st.number_input(
             "Number of Failed Attempts",
             min_value=0,
             max_value=100,
-            value=0
+            value=0,
+            step=1
         )
 
         devices_used = st.number_input(
             "Number of Devices Used",
             min_value=1,
             max_value=20,
-            value=1
+            value=1,
+            step=1
+        )
+
+        new_device = st.checkbox(
+            "New or unrecognized device"
+        )
+
+        unusual_location = st.checkbox(
+            "Unusual transaction location"
         )
 
         submitted = st.form_submit_button(
-            "Check Transaction"
+            "Check Transaction",
+            type="primary"
         )
 
     if submitted:
-        # Keep your existing transaction scoring code here
-        pass
+        score = 5
+        reasons = []
+
+        # High transaction amount
+        if amount >= 25000:
+            score += 25
+            reasons.append("High transaction amount")
+
+        # New device
+        if new_device:
+            score += 15
+            reasons.append("New or unrecognized device")
+
+        # Unusual location
+        if unusual_location:
+            score += 20
+            reasons.append("Unusual transaction location")
+
+        # Failed attempts
+        if failed_attempts >= 3:
+            score += 25
+            reasons.append(
+                f"{int(failed_attempts)} failed attempts detected"
+            )
+        elif failed_attempts >= 1:
+            score += 10
+            reasons.append(
+                f"{int(failed_attempts)} failed attempt(s) detected"
+            )
+
+        # Number of devices
+        if devices_used >= 3:
+            score += 25
+            reasons.append(
+                f"{int(devices_used)} devices used; review activity"
+            )
+        elif devices_used == 2:
+            score += 10
+            reasons.append(
+                "Two devices used; review if unexpected"
+            )
+
+        # Keep the score between 0 and 99
+        score = min(score, 99)
+        result = get_risk_result(score)
+
+        save_result(
+            "Transaction",
+            f"₹{amount:.2f}",
+            score,
+            result,
+            reasons
+        )
+
+        st.subheader("Transaction Screening Result")
+        st.metric("Illustrative Risk Score", f"{score}/99")
+        st.write(f"**Result:** {result}")
+
+        show_risk_alert(
+            score, result, reasons, "Transaction"
+        )
 
 
-# ---------------- URL CHECKER ----------------
+# ==================================================
+# URL CHECKER
+# ==================================================
 elif page == "URL Checker":
     st.header("🔗 Suspicious URL Checker")
+
     st.write(
-        "Enter a website link to screen it for common warning signs."
+        "Enter a website link to screen it for common warning signs. "
+        "The app does not visit the website."
     )
 
     url = st.text_input(
@@ -167,113 +281,187 @@ elif page == "URL Checker":
     )
 
     if st.button("Check URL", type="primary"):
-        score = 0
-        reasons = []
+        raw_url = url.strip()
         parsed = None
         valid = False
 
+        # Validate URL safely
         try:
-            # Keep your existing URL checking code here
-            pass
+            parsed = urlparse(raw_url)
 
-        try:
-            parsed = urlparse(url.strip())
             valid = (
                 parsed.scheme in ("http", "https")
                 and bool(parsed.hostname)
-                and not any(c.isspace() for c in url.strip())
-                and not any(ord(c) < 32 for c in url.strip())
+                and not any(char.isspace() for char in raw_url)
+                and not any(ord(char) < 32 for char in raw_url)
                 and parsed.username is None
                 and parsed.password is None
-                and (parsed.port is None or 0 < parsed.port <= 65535)
+                and (
+                    parsed.port is None
+                    or 0 < parsed.port <= 65535
+                )
             )
         except ValueError:
             valid = False
 
-        if not url.strip() or not valid:
-            st.error("Enter a valid URL starting with http:// or https://.")
+        if not raw_url or not valid:
+            st.error(
+                "Enter a valid URL starting with http:// or https://."
+            )
         else:
             host = parsed.hostname.lower()
-            full_url = url.strip().lower()
+            full_url = raw_url.lower()
 
-            # Original URL scoring rules preserved.
+            score = 0
+            reasons = []
+
+            # HTTPS check
             if parsed.scheme != "https":
                 score += 15
                 reasons.append("Website does not use HTTPS")
-            if "@" in url.strip():
+
+            # @ symbol check
+            if "@" in raw_url:
                 score += 25
                 reasons.append("URL contains an @ symbol")
-            if len(url.strip()) > 100:
+
+            # Long URL check
+            if len(raw_url) > 100:
                 score += 10
                 reasons.append("Unusually long URL")
+
+            # Encoded domain check
             if host.startswith("xn--") or ".xn--" in host:
                 score += 20
                 reasons.append("Domain uses encoded characters")
+
+            # IP address check
             try:
-                import ipaddress
                 ipaddress.ip_address(host)
                 score += 25
-                reasons.append("Website uses an IP address instead of a domain")
+                reasons.append(
+                    "Website uses an IP address instead of a domain"
+                )
             except ValueError:
                 pass
 
-            shorteners = ["bit.ly", "tinyurl.com", "t.co", "is.gd", "cutt.ly", "shorturl.at"]
+            # URL shortener check
+            shorteners = [
+                "bit.ly",
+                "tinyurl.com",
+                "t.co",
+                "is.gd",
+                "cutt.ly",
+                "shorturl.at"
+            ]
+
             if host in shorteners:
                 score += 20
                 reasons.append("URL uses a shortening service")
-            suspicious_words = ["verify", "login", "free-prize", "claim-reward", "password", "urgent"]
+
+            # Suspicious words check
+            suspicious_words = [
+                "verify",
+                "login",
+                "free-prize",
+                "claim-reward",
+                "password",
+                "urgent"
+            ]
+
             if any(word in full_url for word in suspicious_words):
                 score += 15
-                reasons.append("URL contains potentially suspicious words")
+                reasons.append(
+                    "URL contains potentially suspicious words"
+                )
+
             score = min(score, 99)
+            result = get_risk_result(score)
 
-            if score >= 60:
-                result = "Higher Risk"
-            elif score >= 30:
-                result = "Medium Risk"
-            else:
-                result = "Lower Risk"
-
-            save_result("URL", url.strip(), score, result, reasons)
-            st.subheader("URL Screening Result")
-            st.metric("Illustrative Risk Score", f"{score}/100")
-            show_risk_alert(score, result, reasons, "URL")
-            st.caption(
-                "This checker does not visit the URL or verify its reputation. "
-                "A low score does not mean a site is safe."
+            save_result(
+                "URL",
+                raw_url,
+                score,
+                result,
+                reasons
             )
 
-# ---------------- HISTORY ----------------
+            st.subheader("URL Screening Result")
+            st.metric("Illustrative Risk Score", f"{score}/99")
+            st.write(f"**Result:** {result}")
+
+            show_risk_alert(
+                score, result, reasons, "URL"
+            )
+
+            st.caption(
+                "This checker does not visit the URL or verify its "
+                "reputation. A low score does not mean a website is safe."
+            )
+
+
+# ==================================================
+# HISTORY
+# ==================================================
 elif page == "History":
     st.header("🕒 Check History")
+
     history = st.session_state.history
+
     if history:
         df = pd.DataFrame(history)
+
         search = st.text_input("Search history")
+
         if search:
-            df = df[df.astype(str).apply(
-                lambda row: row.str.contains(search, case=False, regex=False).any(), axis=1
-            )]
-        st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
-        csv = pd.DataFrame(history).to_csv(index=False).encode("utf-8")
-        st.download_button(
-            "Download History as CSV", data=csv,
-            file_name="fraud_detection_history.csv", mime="text/csv"
+            mask = df.astype(str).apply(
+                lambda row: row.str.contains(
+                    search,
+                    case=False,
+                    regex=False
+                ).any(),
+                axis=1
+            )
+            df = df[mask]
+
+        st.dataframe(
+            df.iloc[::-1],
+            use_container_width=True,
+            hide_index=True
         )
+
+        csv_data = (
+            pd.DataFrame(history)
+            .to_csv(index=False)
+            .encode("utf-8")
+        )
+
+        st.download_button(
+            "Download History as CSV",
+            data=csv_data,
+            file_name="fraud_detection_history.csv",
+            mime="text/csv"
+        )
+
         if st.button("Clear History"):
             st.session_state.history = []
             st.rerun()
     else:
-        st.info("Your checked transactions and URLs will appear here.")
+        st.info(
+            "Your checked transactions and URLs will appear here."
+        )
 
+
+# ==================================================
+# FOOTER
+# ==================================================
 st.divider()
-st.caption(
-    "Educational project only. Use synthetic data. Do not enter passwords, OTPs, card numbers, "
-    "or personal financial data. History is kept only in the current app session and may reset."
-)
-    
-    
 
+st.caption(
+    "Educational project only. Use synthetic data. Do not enter "
+    "passwords, OTPs, card numbers, or personal financial data. "
+    "History is kept only in the current app session and may reset."
+)
+
+        
     
-            
-                
