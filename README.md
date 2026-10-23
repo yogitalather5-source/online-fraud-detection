@@ -3,12 +3,13 @@
 A beginner-friendly Streamlit project for a college demonstration.
 
 ## Features
-- Transaction amount and risk-indicator inputs
-- An illustrative risk score with reasons
-- Sample transaction table
-- CSV preview
+- Number of failed transaction attempts
+- Number of devices used
+- Risk score calculation
+- Risk alerts with reasons
+- Fraud analytics dashboard
 - Privacy and limitations notices
-
+- CSV preview
 ## Important limitation
 The current score uses simple, manually defined demo rules. It is **not** a trained machine-learning model, does not calculate a real fraud probability, and must not be used for real financial decisions. A real system needs representative labeled data, model training, careful evaluation, security controls, and human review.
 
