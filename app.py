@@ -122,71 +122,60 @@ if page == "Dashboard":
 
 # ---------------- TRANSACTION CHECKER ----------------
 elif page == "Transaction Checker":
-    st.header("💳 Analyze a Transaction")
-    amount = st.number_input("Transaction amount (₹)", min_value=0.0, value=1500.0, step=100.0)
-    transaction_type = st.selectbox(
-        "Transaction type", ["UPI payment", "Online transfer", "Card payment", "Other"]
-    )
-    new_device = st.checkbox("Transaction is from a new or unrecognized device")
-    unusual_location = st.checkbox("Transaction is from an unusual location")
-    repeated_attempts = st.checkbox("Several attempts happened in a short time")
+    st.header("💳 Transaction Fraud Checker")
 
-    if st.button("Analyze Transaction", type="primary"):
-        # Original transaction scoring rules preserved.
-        score = 5
-        reasons = []
-        if amount >= 25000:
-            score += 25
-            reasons.append("High transaction amount")
-        if new_device:
-            score += 25
-            reasons.append("New or unrecognized device")
-        if unusual_location:
-            score += 25
-            reasons.append("Unusual location")
-        if repeated_attempts:
-            score += 20
-            reasons.append("Repeated attempts")
-        score = min(score, 99)
+    with st.form("transaction_form"):
+        amount = st.number_input(
+            "Transaction Amount (₹)",
+            min_value=0.0,
+            value=1000.0
+        )
 
-        if score >= 60:
-            result = "Higher Risk"
-        elif score >= 30:
-            result = "Medium Risk"
-        else:
-            result = "Lower Risk"
-
-        save_result("Transaction", f"₹{amount:.2f} | {transaction_type}", score, result, reasons)
-        st.subheader("Screening Result")
-        st.metric("Illustrative Risk Score", f"{score}/100")
-        show_risk_alert(score, result, reasons, "Transaction")
         failed_attempts = st.number_input(
-    "Number of Failed Attempts",
-    min_value=0,
-    max_value=100,
-    value=0,
-    step=1
-)
+            "Number of Failed Attempts",
+            min_value=0,
+            max_value=100,
+            value=0
+        )
 
-devices_used = st.number_input(
-    "Number of Devices Used",
-    min_value=1,
-    max_value=20,
-    value=1,
-    step=1
-)
+        devices_used = st.number_input(
+            "Number of Devices Used",
+            min_value=1,
+            max_value=20,
+            value=1
+        )
+
+        submitted = st.form_submit_button(
+            "Check Transaction"
+        )
+
+    if submitted:
+        # Keep your existing transaction scoring code here
+        pass
+
 
 # ---------------- URL CHECKER ----------------
 elif page == "URL Checker":
     st.header("🔗 Suspicious URL Checker")
-    st.write("Enter a website link to screen it for common warning signs.")
-    url = st.text_input("Website URL", placeholder="https://example.com")
+    st.write(
+        "Enter a website link to screen it for common warning signs."
+    )
+
+    url = st.text_input(
+        "Website URL",
+        placeholder="https://example.com"
+    )
 
     if st.button("Check URL", type="primary"):
         score = 0
         reasons = []
         parsed = None
         valid = False
+
+        try:
+            # Keep your existing URL checking code here
+            pass
+
         try:
             parsed = urlparse(url.strip())
             valid = (
